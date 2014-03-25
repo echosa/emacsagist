@@ -18,6 +18,20 @@
   "Parses the JSON result from the search."
   (json-read-from-string results))
 
+(defun emacsagist/display-header (query &optional next-url)
+  "Displays a header for the search results."
+  (insert (concat "Packagist results for: " query))
+  (when next-url
+    (newline)
+    (insert next-url))
+  (newline 2))
+
+(defun emacsagist/display-footer (&optional next-url)
+  "Displays a footer for the search results."
+  (when next-url
+    (newline)
+    (insert next-url)))
+
 (defun emacsagist/display-result (result)
   "Displays a single result entry."
   (insert (cdr (assoc 'name result))) 
@@ -27,11 +41,13 @@
   "Displays the results in a user interface buffer."
   (switch-to-buffer emacsagist/packagist-results-buffer)
   (kill-region (point-min) (point-max))
-  (insert (concat "Packagist results for: " query))
-  (newline 2)
-  (let ((matches (cdr (assoc 'results results))))
+  (let ((matches (cdr (assoc 'results results)))
+        (next-url (when (assoc 'next results)
+                    (cdr (assoc 'next results)))))
+    (emacsagist/display-header query next-url)
     (dotimes (index (length matches))
-      (emacsagist/display-result (elt matches index)))))
+      (emacsagist/display-result (elt matches index)))
+    (emacsagist/display-footer next-url)))
 
 (defun emacsagist/search (query)
   "Prompts the user for a search term, then searches and displays results."
