@@ -40,6 +40,7 @@
 (defun emacsagist/display-results (query results)
   "Displays the results in a user interface buffer."
   (switch-to-buffer emacsagist/packagist-results-buffer)
+  (read-only-mode -1)
   (kill-region (point-min) (point-max))
   (let ((matches (cdr (assoc 'results results)))
         (next-url (when (assoc 'next results)
@@ -47,10 +48,16 @@
     (emacsagist/display-header query next-url)
     (dotimes (index (length matches))
       (emacsagist/display-result (elt matches index)))
-    (emacsagist/display-footer next-url)))
+    (emacsagist/display-footer next-url))
+  (read-only-mode 1)
+  (emacsagist-mode))
 
 (defun emacsagist/search (query)
   "Prompts the user for a search term, then searches and displays results."
   (interactive "sSearch Packagist for: ")
   (emacsagist/display-results query (emacsagist/parse-results
                                      (emacsagist/search-packagist query))))
+
+(define-derived-mode emacsagist-mode special-mode "Emacsagist"
+  "Major mode for the emacsagist results buffer."
+  nil)
