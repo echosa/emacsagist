@@ -50,6 +50,7 @@
       (emacsagist/display-result (elt matches index)))
     (emacsagist/display-footer next-url))
   (read-only-mode 1)
+  (goto-char (point-min))
   (emacsagist-mode))
 
 (defun emacsagist/search (query)
@@ -58,6 +59,15 @@
   (emacsagist/display-results query (emacsagist/parse-results
                                      (emacsagist/search-packagist query))))
 
+(defun emacsagist/keypress-return ()
+  (interactive)
+  (message "return pressed"))
+
 (define-derived-mode emacsagist-mode special-mode "Emacsagist"
-  "Major mode for the emacsagist results buffer."
+  "Major mode for the emacsagist results buffer.
+\\{emacsagist-mode-map}"
   nil)
+
+(define-key emacsagist-mode-map [return] 'emacsagist/keypress-return)
+
+(provide 'emacsagist)
