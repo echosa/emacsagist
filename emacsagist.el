@@ -28,7 +28,7 @@
 
 (defun emacsagist/display-next-page-link (next-page query)
   (let ((position (point)))
-    (insert "Next Page")
+    (insert "[Next Page]")
     (put-text-property position (point) 'next-page next-page)
     (let ((map (make-sparse-keymap)))
       (define-key map [return] 'emacsagist/display-next-page)
@@ -39,7 +39,7 @@
 
 (defun emacsagist/display-previous-page-link (previous-page query)
   (let ((position (point)))
-    (insert "Previous Page")
+    (insert "[Previous Page]")
     (put-text-property position (point) 'previous-page previous-page)
     (let ((map (make-sparse-keymap)))
       (define-key map [return] 'emacsagist/display-previous-page)
@@ -48,6 +48,26 @@
                                               previous-page ,previous-page
                                               query ,query)))))
 
+(defun emacsagist/display-page-links (page next-page query)
+  (let (show-previous-link
+        show-next-link
+        (page (if (and page (stringp page))
+                  (string-to-number page)
+                page)))
+    (when (> page 1)
+      (setq show-previous-link t))
+    (when next-page
+      (setq show-next-link t))
+    (when (or show-previous-link show-next-link)
+      (newline))
+    (when show-previous-link
+      (emacsagist/display-previous-page-link (number-to-string (- page 1)) query)
+      (when show-next-link
+        (insert " ")))
+    (when show-next-link
+      (emacsagist/display-next-page-link next-page query))
+    ))
+
 (defun emacsagist/display-header (query page &optional next-page)
   "Displays a header for the search results."
   (insert (concat "Packagist results for: " query))
@@ -55,22 +75,12 @@
   (insert (concat "Page " (if (and page (stringp page))
                               page
                             (number-to-string page))))
-  (let ((page (if (and page (stringp page))
-                  (string-to-number page)
-                page)))
-    (when (> page 1)
-      (newline)
-      (emacsagist/display-previous-page-link (number-to-string (- page 1)) query)))
-  (when next-page
-    (newline)
-    (emacsagist/display-next-page-link next-page query))
+  (emacsagist/display-page-links page next-page query)
   (newline 2))
 
 (defun emacsagist/display-footer (&optional next-page)
   "Displays a footer for the search results."
-  (when next-page
-    (newline)
-    (emacsagist/display-next-page-link next-page query)))
+  (emacsagist/display-page-links page next-page query))
 
 (defun emacsagist/display-result (result)
   "Displays a single result entry."
