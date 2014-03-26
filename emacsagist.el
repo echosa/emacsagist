@@ -26,9 +26,12 @@ Argument PAGE page number."
   "Search Packagist for the QUERY, returning the resulting JSON.
 Argument PAGE page number."
   (save-current-buffer
-    (switch-to-buffer (url-retrieve-synchronously
-                       (emacsagist/make-search-url query page)))
-    (buffer-substring url-http-end-of-headers (point-max))))
+    (let ((http-buffer (url-retrieve-synchronously
+                        (emacsagist/make-search-url query page))))
+      (switch-to-buffer http-buffer)
+      (let ((result (buffer-substring url-http-end-of-headers (point-max))))
+        (kill-buffer http-buffer)
+        result))))
 
 (defun emacsagist/parse-results (results)
   "Parse the JSON result from the search.
@@ -43,7 +46,7 @@ Argument QUERY the search string."
     (insert "[Next Page]")
     (put-text-property position (point) 'next-page next-page)
     (let ((map (make-sparse-keymap)))
-      (define-key map [return] 'emacsagist/display-next-page)
+      (define-key map (kbd "RET") 'emacsagist/display-next-page)
       (add-text-properties position (point) `(keymap ,map
                                               mouse-face highlight
                                               next-page ,next-page
@@ -57,7 +60,7 @@ Argument QUERY the search string."
     (insert "[Previous Page]")
     (put-text-property position (point) 'previous-page previous-page)
     (let ((map (make-sparse-keymap)))
-      (define-key map [return] 'emacsagist/display-previous-page)
+      (define-key map (kbd "RET") 'emacsagist/display-previous-page)
       (add-text-properties position (point) `(keymap ,map
                                               mouse-face highlight
                                               previous-page ,previous-page
@@ -162,17 +165,15 @@ Argument RESULTS search results."
   "Prompt the user for a search QUERY, then search and display results for the correct PAGE."
   (interactive "sSearch Packagist for: ")
   (let ((page (or page 1)))
-    (emacsagist/display-results query
-                                page
-                                (emacsagist/parse-results
-                                       (emacsagist/search-packagist query page)))))
+    (emacsagist/display-results
+     query
+     page
+     (emacsagist/parse-results (emacsagist/search-packagist query page)))))
 
 (define-derived-mode emacsagist-mode special-mode "Emacsagist"
   "Major mode for the emacsagist results buffer.
 \\{emacsagist-mode-map}"
   (auto-fill-mode))
-
-(provide 'emacsagist)
 
 (provide 'emacsagist)
 
