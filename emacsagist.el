@@ -122,8 +122,10 @@ Optional argument NEXT-PAGE next page number."
   "Displays a single RESULT entry."
   (insert (cdr (assoc 'name result)))
   (newline)
-  (insert (cdr (assoc 'description result)))
-  (newline)
+  (let ((desc (cdr (assoc 'description result))))
+    (unless (string= desc "")
+      (insert desc)
+      (newline)))
   (let ((url (cdr (assoc 'url result)))
         (start (point))
         (map (make-sparse-keymap)))
