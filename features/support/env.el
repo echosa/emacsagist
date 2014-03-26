@@ -16,10 +16,13 @@
 (require 'ert)
 
 (defun emacsagist/search-packagist (query page)
-  (with-temp-buffer
-    (insert-file-contents
-     (concat emacsagist-root-path "/test-data/search-page1.json"))
-    (buffer-string)))
+  (let ((page (if (stringp page)
+                  page
+                (number-to-string page))))
+    (with-temp-buffer
+      (insert-file-contents
+       (concat emacsagist-root-path "/test-data/search-page" page ".json"))
+      (buffer-string))))
 
 (Setup
  ;; Before anything has run
