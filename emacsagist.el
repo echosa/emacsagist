@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t; -*-
 ;;; emacsagist.el --- Search Packagist.org packages without leaving Emacs
 
 ;; Version: 0.1.0
@@ -38,33 +39,35 @@ Argument PAGE page number."
 Argument RESULTS JSON results."
   (json-read-from-string results))
 
+(defun emacsagist/add-page-link (start end target-page query)
+  "Add a link for visiting the previous or next page of results to the region 
+between START and END.
+Argument TARGET-PAGE the target page number.
+Argument QUERY query string to pass along for display."
+  (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "RET") 'emacsagist/display-page)
+      (add-text-properties start end `(keymap ,map
+                                       mouse-face highlight
+                                       page ,target-page
+                                       query ,query))))
+
 (defun emacsagist/display-next-page-link (next-page query)
   "Display a link to the next page of search results.
 Argument NEXT-PAGE previous next number.
-Argument QUERY the search string."
-  (let ((position (point)))
+Argument QUERY the search string.
+Argument QUERY query string to pass along for display."
+  (let ((start (point)))
     (insert "[Next Page]")
-    (put-text-property position (point) 'next-page next-page)
-    (let ((map (make-sparse-keymap)))
-      (define-key map (kbd "RET") 'emacsagist/display-next-page)
-      (add-text-properties position (point) `(keymap ,map
-                                              mouse-face highlight
-                                              next-page ,next-page
-                                              query ,query)))))
+    (emacsagist/add-page-link start (point) next-page query)))
 
 (defun emacsagist/display-previous-page-link (previous-page query)
   "Display a link to the previous page of search results.
 Argument PREVIOUS-PAGE previous page number.
-Argument QUERY the search string."
-  (let ((position (point)))
+Argument QUERY the search string.
+Argument QUERY query string to pass along for display."
+  (let ((start (point)))
     (insert "[Previous Page]")
-    (put-text-property position (point) 'previous-page previous-page)
-    (let ((map (make-sparse-keymap)))
-      (define-key map (kbd "RET") 'emacsagist/display-previous-page)
-      (add-text-properties position (point) `(keymap ,map
-                                              mouse-face highlight
-                                              previous-page ,previous-page
-                                              query ,query)))))
+    (emacsagist/add-page-link start (point) previous-page query)))
 
 (defun emacsagist/display-page-links (page next-page query)
   "Display previous/next page links.
@@ -87,8 +90,7 @@ Argument QUERY search string"
       (when show-next-link
         (insert " ")))
     (when show-next-link
-      (emacsagist/display-next-page-link next-page query))
-    ))
+      (emacsagist/display-next-page-link next-page query))))
 
 (defun emacsagist/display-header (query page &optional next-page)
   "Displays a header for the search results.
@@ -103,8 +105,10 @@ Optional argument NEXT-PAGE next page number."
   (emacsagist/display-page-links page next-page query)
   (newline 2))
 
-(defun emacsagist/display-footer (&optional next-page)
+(defun emacsagist/display-footer (query page &optional next-page)
   "Displays a footer for the search results.
+Argument QUERY query string to pass along.
+Argument PAGE current page number.
 Optional argument NEXT-PAGE next page number."
   (emacsagist/display-page-links page next-page query))
 
@@ -142,24 +146,17 @@ Argument RESULTS search results."
         (insert "No packages found.")
       (dotimes (index (length matches))
         (emacsagist/display-result (elt matches index))))
-    (emacsagist/display-footer next-url))
+    (emacsagist/display-footer query page next-url))
   (read-only-mode 1)
   (goto-char (point-min))
   (emacsagist-mode))
 
-(defun emacsagist/display-previous-page ()
+(defun emacsagist/display-page ()
   "Display previous page."
   (interactive)
-  (let ((previous-page (get-text-property (point) 'previous-page))
+  (let ((page (get-text-property (point) 'page))
         (query (get-text-property (point) 'query)))
-    (emacsagist/search query previous-page)))
-
-(defun emacsagist/display-next-page ()
-  "Display next page."
-  (interactive)
-  (let ((next-page (get-text-property (point) 'next-page))
-        (query (get-text-property (point) 'query)))
-    (emacsagist/search query next-page)))
+    (emacsagist/search query page)))
 
 (defun emacsagist/search (query &optional page)
   "Prompt the user for a search QUERY, then search and display results for the correct PAGE."
