@@ -85,7 +85,11 @@
 (defun emacsagist/display-result (result)
   "Displays a single result entry."
   (insert (cdr (assoc 'name result))) 
-  (newline))
+  (newline)
+  (insert (cdr (assoc 'description result))) 
+  (newline)
+  (insert (cdr (assoc 'url result))) 
+  (newline 2))
 
 (defun emacsagist/get-next-page-number (next-url)
   "Returns the page number in the next url."
@@ -141,7 +145,7 @@
 (define-derived-mode emacsagist-mode special-mode "Emacsagist"
   "Major mode for the emacsagist results buffer.
 \\{emacsagist-mode-map}"
-  nil)
+  (auto-fill-mode))
 
 (define-key emacsagist-mode-map [return] 'emacsagist/keypress-return)
 
