@@ -113,13 +113,26 @@ Argument PAGE current page number.
 Optional argument NEXT-PAGE next page number."
   (emacsagist/display-page-links page next-page query))
 
+(defun emacsagist/goto-url ()
+  "Open URL in a web browser."
+  (interactive)
+  (browse-url (get-text-property (point) 'url)))
+
 (defun emacsagist/display-result (result)
   "Displays a single RESULT entry."
   (insert (cdr (assoc 'name result)))
   (newline)
   (insert (cdr (assoc 'description result)))
   (newline)
-  (insert (cdr (assoc 'url result)))
+  (let ((url (cdr (assoc 'url result)))
+        (start (point))
+        (map (make-sparse-keymap)))
+    (insert url)
+    (define-key map (kbd "RET") 'emacsagist/goto-url)
+    (add-text-properties start (point) `(keymap ,map
+                                         face underline
+                                         url ,url)))
+  (insert " ")
   (newline 2))
 
 (defun emacsagist/get-next-page-number (next-url)
