@@ -47,7 +47,7 @@ Argument QUERY query string to pass along for display."
   (let ((map (make-sparse-keymap)))
       (define-key map (kbd "RET") 'emacsagist/display-page)
       (add-text-properties start end `(keymap ,map
-                                       mouse-face highlight
+                                       face underline
                                        page ,target-page
                                        query ,query))))
 
@@ -90,7 +90,8 @@ Argument QUERY search string"
       (when show-next-link
         (insert " ")))
     (when show-next-link
-      (emacsagist/display-next-page-link next-page query))))
+      (emacsagist/display-next-page-link next-page query)
+      (insert " "))))
 
 (defun emacsagist/display-header (query page &optional next-page)
   "Displays a header for the search results.
