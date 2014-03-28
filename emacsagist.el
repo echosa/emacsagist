@@ -1,5 +1,4 @@
-;; -*- lexical-binding: t; -*-
-;;; emacsagist.el --- Search Packagist.org packages without leaving Emacs
+;;; emacsagist.el --- Search Packagist.org packages without leaving Emacs -*- lexical-binding: t; -*-
 
 ;; Version: 0.1.0
 
@@ -22,16 +21,14 @@
   name description url)
 
 (defun emacsagist/make-search-url (search)
-  "Create a search url for the QUERY.
-Argument PAGE page number."
+  "Generate a url for the SEARCH query."
   (let ((page (emacsagist/packagist-search-page search)))
     (concat emacsagist/packagist-url "/search.json?q="
             (emacsagist/packagist-search-query search)
             (when page (concat "&page=" (number-to-string page))))))
 
 (defun emacsagist/search-packagist (search)
-  "Search Packagist for the QUERY, returning the resulting JSON.
-Argument PAGE page number."
+  "Search Packagist for the given SEARCH, returning the resulting JSON."
   (save-current-buffer
     (let ((http-buffer (url-retrieve-synchronously
                         (emacsagist/make-search-url search))))
@@ -41,8 +38,7 @@ Argument PAGE page number."
         result))))
 
 (defun emacsagist/parse-results (search results)
-  "Parse the JSON result from the search.
-Argument RESULTS JSON results."
+  "Parse the SEARCH struct's RESULTS."
   (let ((parsed-results (json-read-from-string results)))
     (setf (emacsagist/packagist-search-results search)
           (cdr (assoc 'results parsed-results)))
@@ -54,10 +50,7 @@ Argument RESULTS JSON results."
     search))
 
 (defun emacsagist/add-page-link (start end target-page query)
-  "Add a link for visiting the previous or next page of results to the region 
-between START and END.
-Argument TARGET-PAGE the target page number.
-Argument QUERY query string to pass along for display."
+  "Add link between START and END to view TARGET-PAGE of QUERY search results."
   (let ((map (make-sparse-keymap)))
       (define-key map (kbd "RET") 'emacsagist/display-page)
       (add-text-properties start end `(keymap ,map
@@ -65,46 +58,25 @@ Argument QUERY query string to pass along for display."
                                        page ,target-page
                                        query ,query))))
 
-(defun emacsagist/display-next-page-link (next-page query)
-  "Display a link to the next page of search results.
-Argument NEXT-PAGE previous next number.
-Argument QUERY the search string.
-Argument QUERY query string to pass along for display."
-  (let ((start (point)))
-    (insert "[Next Page]")
-    (emacsagist/add-page-link start (point) next-page query)))
-
-(defun emacsagist/display-previous-page-link (previous-page query)
-  "Display a link to the previous page of search results.
-Argument PREVIOUS-PAGE previous page number.
-Argument QUERY the search string.
-Argument QUERY query string to pass along for display."
-  (let ((start (point)))
-    (insert "[Previous Page]")
-    (emacsagist/add-page-link start (point) previous-page query)))
-
 (defun emacsagist/display-page-links (search)
-  "Display previous/next page links.
-Argument PAGE current page
-Argument NEXT-PAGE next page
-Argument QUERY search string"
+  "Display previous/next page links for SEARCH results."
   (let ((query (emacsagist/packagist-search-query search))
-        (page (emacsagist/packagist-search-page search)) 
+        (page (emacsagist/packagist-search-page search))
         (next-page (emacsagist/packagist-search-next-page search)))
     (newline)
     (when (> page 1)
-      (emacsagist/display-previous-page-link
-       (number-to-string (- page 1)) query)
+      (let ((start (point)))
+        (insert "[Previous Page]")
+        (emacsagist/add-page-link start (point) (- page 1) query))
       (when next-page (insert " ")))
     (when next-page
-      (emacsagist/display-next-page-link next-page query))
+      (let ((start (point)))
+        (insert "[Next Page]")
+        (emacsagist/add-page-link start (point) next-page query)))
     (insert " ")))
 
 (defun emacsagist/display-header (search)
-  "Displays a header for the search results.
-Argument QUERY search query.
-Argument PAGE page number.
-Optional argument NEXT-PAGE next page number."
+  "Display a header for the SEARCH results."
   (let ((query (emacsagist/packagist-search-query search))
         (page (emacsagist/packagist-search-page search))
         (next-page (emacsagist/packagist-search-next-page search)))
@@ -115,12 +87,12 @@ Optional argument NEXT-PAGE next page number."
   (newline 2))
 
 (defun emacsagist/goto-url-property ()
-  "Open URL in a web browser."
+  "Open the URL text property in a web browser."
   (interactive)
   (browse-url (get-text-property (point) 'url)))
 
 (defun emacsagist/display-result (result)
-  "Displays a single RESULT entry."
+  "Display the RESULT entry in the search results list."
   (insert (cdr (assoc 'name result)))
   (newline)
   (let ((desc (cdr (assoc 'description result))))
@@ -139,10 +111,7 @@ Optional argument NEXT-PAGE next page number."
   (newline 2))
 
 (defun emacsagist/display-results (search)
-  "Display the results in a user interface buffer.
-Argument QUERY search string.
-Argument PAGE page number.
-Argument RESULTS search results."
+  "Display the SEARCH results in a user interface buffer."
   (switch-to-buffer emacsagist/packagist-results-buffer)
   (read-only-mode -1)
   (kill-region (point-min) (point-max))
@@ -159,15 +128,14 @@ Argument RESULTS search results."
   (emacsagist-mode))
 
 (defun emacsagist/display-page ()
-  "Display previous page."
+  "Display search results page stored in the page text-property."
   (interactive)
   (let ((page (get-text-property (point) 'page))
         (query (get-text-property (point) 'query)))
     (emacsagist/search query page)))
 
 (defun emacsagist/search (query &optional page)
-  "Prompt the user for a search QUERY, then search and display results for the 
-correct PAGE."
+  "Search Packagist for QUERY, then display results for PAGE (default 1)."
   (interactive "sSearch Packagist for: ")
   (let* ((page (if (stringp page) (string-to-number page) (or page 1)))
          (search (make-emacsagist/packagist-search :query query :page page)))
