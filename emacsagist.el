@@ -45,8 +45,7 @@
     (setf (emacsagist/packagist-search-next-page search)
           (let ((next-url (when (assoc 'next parsed-results)
                             (cdr (assoc 'next parsed-results)))))
-            (when next-url
-              (nth 1 (split-string next-url "page=")))))
+            (when next-url (nth 1 (split-string next-url "page=")))))
     search))
 
 (defun emacsagist/add-page-link (start end target-page query)
@@ -63,7 +62,6 @@
   (let ((query (emacsagist/packagist-search-query search))
         (page (emacsagist/packagist-search-page search))
         (next-page (emacsagist/packagist-search-next-page search)))
-    (newline)
     (when (> page 1)
       (let ((start (point)))
         (insert "[Previous Page]")
@@ -77,13 +75,13 @@
 
 (defun emacsagist/display-header (search)
   "Display a header for the SEARCH results."
-  (let ((query (emacsagist/packagist-search-query search))
-        (page (emacsagist/packagist-search-page search))
-        (next-page (emacsagist/packagist-search-next-page search)))
-    (insert (concat "Packagist results for: " query))
-    (newline)
-    (insert (concat "Page " (number-to-string page)))
-    (emacsagist/display-page-links search))
+  (insert (concat "Packagist results for: "
+                  (emacsagist/packagist-search-query search)))
+  (newline)
+  (insert (concat "Page "
+                  (number-to-string (emacsagist/packagist-search-page search))))
+  (newline)
+  (emacsagist/display-page-links search)
   (newline 2))
 
 (defun emacsagist/goto-url-property ()
@@ -130,9 +128,8 @@
 (defun emacsagist/display-page ()
   "Display search results page stored in the page text-property."
   (interactive)
-  (let ((page (get-text-property (point) 'page))
-        (query (get-text-property (point) 'query)))
-    (emacsagist/search query page)))
+  (emacsagist/search (get-text-property (point) 'query)
+                     (get-text-property (point) 'page)))
 
 (defun emacsagist/search (query &optional page)
   "Search Packagist for QUERY, then display results for PAGE (default 1)."
