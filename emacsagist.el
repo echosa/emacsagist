@@ -8,36 +8,39 @@
 
 (require 'url)
 (require 'json)
+(require 'emacsagist-search-results)
 
 ;;; Code:
 
 (defvar emacsagist/packagist-url "https://packagist.org")
 (defvar emacsagist/packagist-results-buffer "*Packagist*")
 
-(defun emacsagist/make-search-url (query page)
+(defun emacsagist/make-search-url (results)
   "Create a search url for the QUERY.
 Argument PAGE page number."
-  (concat emacsagist/packagist-url "/search.json?q=" query
-          (when page
-            (concat "&page=" (if (stringp page)
-                                 page
-                               (number-to-string page))))))
+  (let ((page (emacsagist/packagist-search-page results)))
+    (concat emacsagist/packagist-url "/search.json?q="
+            (emacsagist/packagist-search-query results)
+            (when page
+              (concat "&page=" (number-to-string page))))))
 
-(defun emacsagist/search-packagist (query page)
+(defun emacsagist/search-packagist (results)
   "Search Packagist for the QUERY, returning the resulting JSON.
 Argument PAGE page number."
   (save-current-buffer
     (let ((http-buffer (url-retrieve-synchronously
-                        (emacsagist/make-search-url query page))))
+                        (emacsagist/make-search-url results))))
       (switch-to-buffer http-buffer)
       (let ((result (buffer-substring url-http-end-of-headers (point-max))))
         (kill-buffer http-buffer)
         result))))
 
-(defun emacsagist/parse-results (results)
+(defun emacsagist/parse-results (search results)
   "Parse the JSON result from the search.
 Argument RESULTS JSON results."
-  (json-read-from-string results))
+  (let ((parsed-results (json-read-from-string results)))
+    (setf (emacsagist/packagist-search-results search) parsed-results)
+    search))
 
 (defun emacsagist/add-page-link (start end target-page query)
   "Add a link for visiting the previous or next page of results to the region 
@@ -93,25 +96,28 @@ Argument QUERY search string"
       (emacsagist/display-next-page-link next-page query)
       (insert " "))))
 
-(defun emacsagist/display-header (query page &optional next-page)
+(defun emacsagist/display-header (results &optional next-page)
   "Displays a header for the search results.
 Argument QUERY search query.
 Argument PAGE page number.
 Optional argument NEXT-PAGE next page number."
-  (insert (concat "Packagist results for: " query))
-  (newline)
-  (insert (concat "Page " (if (and page (stringp page))
-                              page
-                            (number-to-string page))))
-  (emacsagist/display-page-links page next-page query)
+  (let ((query (emacsagist/packagist-search-query results))
+        (page (emacsagist/packagist-search-page results)))
+    (insert (concat "Packagist results for: " query))
+    (newline)
+    (insert (concat "Page " (number-to-string page)))
+    (emacsagist/display-page-links page next-page query))
   (newline 2))
 
-(defun emacsagist/display-footer (query page &optional next-page)
+(defun emacsagist/display-footer (results &optional next-page)
   "Displays a footer for the search results.
 Argument QUERY query string to pass along.
 Argument PAGE current page number.
 Optional argument NEXT-PAGE next page number."
-  (emacsagist/display-page-links page next-page query))
+  (emacsagist/display-page-links
+   (emacsagist/packagist-search-page results)
+   next-page
+   (emacsagist/packagist-search-query results)))
 
 (defun emacsagist/goto-url ()
   "Open URL in a web browser."
@@ -145,7 +151,7 @@ Argument NEXT-URL next url string."
       (when (string-match delimiter next-url)
         (nth 1 (split-string next-url delimiter))))))
 
-(defun emacsagist/display-results (query page results)
+(defun emacsagist/display-results (results)
   "Display the results in a user interface buffer.
 Argument QUERY search string.
 Argument PAGE page number.
@@ -153,16 +159,19 @@ Argument RESULTS search results."
   (switch-to-buffer emacsagist/packagist-results-buffer)
   (read-only-mode -1)
   (kill-region (point-min) (point-max))
-  (let ((matches (cdr (assoc 'results results)))
+  (let ((matches (cdr (assoc 'results
+                             (emacsagist/packagist-search-results results))))
         (next-url (emacsagist/get-next-page-number
-                   (when (assoc 'next results)
-                     (cdr (assoc 'next results))))))
-    (emacsagist/display-header query page next-url)
+                   (when (assoc 'next 
+                                (emacsagist/packagist-search-results results))
+                     (cdr (assoc 'next 
+                                 (emacsagist/packagist-search-results results)))))))
+    (emacsagist/display-header results next-url)
     (if (= 0 (length matches))
         (insert "No packages found.")
       (dotimes (index (length matches))
         (emacsagist/display-result (elt matches index))))
-    (emacsagist/display-footer query page next-url))
+    (emacsagist/display-footer results next-url))
   (read-only-mode 1)
   (goto-char (point-min))
   (emacsagist-mode))
@@ -177,11 +186,10 @@ Argument RESULTS search results."
 (defun emacsagist/search (query &optional page)
   "Prompt the user for a search QUERY, then search and display results for the correct PAGE."
   (interactive "sSearch Packagist for: ")
-  (let ((page (or page 1)))
+  (let* ((page (if (stringp page) (string-to-number page) (or page 1)))
+         (search (make-emacsagist/packagist-search :query query :page page)))
     (emacsagist/display-results
-     query
-     page
-     (emacsagist/parse-results (emacsagist/search-packagist query page)))))
+     (emacsagist/parse-results search (emacsagist/search-packagist search)))))
 
 (define-derived-mode emacsagist-mode special-mode "Emacsagist"
   "Major mode for the emacsagist results buffer.
