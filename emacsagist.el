@@ -89,6 +89,30 @@
   (interactive)
   (browse-url (get-text-property (point) 'url)))
 
+(defun emacsagist/next-link ()
+  "Move cursor to the next link in the buffer."
+  (interactive)
+  (let* ((next-position (next-single-property-change (point) 'keymap))
+         (next-position
+          (when next-position
+            (if (get-text-property next-position 'keymap)
+                next-position
+              (unless (eobp)
+                (next-single-property-change next-position 'keymap))))))
+    (when next-position (goto-char next-position))))
+
+(defun emacsagist/previous-link ()
+  "Move cursor to the previous link in the buffer."
+  (interactive)
+  (let* ((previous-position (previous-single-property-change (point) 'keymap))
+         (previous-position
+          (when previous-position
+            (if (get-text-property previous-position 'keymap)
+                previous-position
+              (unless (bobp)
+                (previous-single-property-change previous-position 'keymap))))))
+    (when previous-position (goto-char previous-position))))
+
 (defun emacsagist/display-result (result)
   "Display the RESULT entry in the search results list."
   (insert (cdr (assoc 'name result)))
@@ -143,6 +167,9 @@
   "Major mode for the emacsagist results buffer.
 \\{emacsagist-mode-map}"
   (auto-fill-mode))
+
+(define-key emacsagist-mode-map (kbd "TAB") 'emacsagist/next-link)
+(define-key emacsagist-mode-map [backtab] 'emacsagist/previous-link)
 
 (provide 'emacsagist)
 

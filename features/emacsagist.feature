@@ -29,3 +29,24 @@ Feature: Search Packagist
     And I should not see "[Previous Page]"
     And I should see "[Next Page]"
     And I should see "phpunit/phpunit"
+
+  Scenario: Jumping between links
+    When I run a search
+    Then the cursor should be at point "1"
+    When I press "<backtab>"
+    Then the cursor should be at point "1"
+    When I press "<tab>"
+    Then the cursor should be before "[Next Page]"
+    When I press "<tab>"
+    Then the cursor should be before "https"
+    When I press "<backtab>"
+    Then the cursor should be before "[Next Page]"
+    When I press "<backtab>"
+    Then the cursor should be before "[Next Page]"
+    When I go to end of buffer
+    And I press "<tab>"
+    Then I should be at the end of buffer
+    When I press "<backtab>"
+    Then the cursor should be before "[Next Page]"
+
+

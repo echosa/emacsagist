@@ -5,3 +5,7 @@
 (When "^I run a search$"
   (lambda ()
     (emacsagist/search "phpunit")))
+
+(Then "^I should be at the end of buffer$"
+  (lambda ()
+    (cl-assert (eobp))))
