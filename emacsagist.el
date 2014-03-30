@@ -20,6 +20,69 @@
 (cl-defstruct emacsagist/search-result
   name description url)
 
+(cl-defstruct emacsagist/packagist-package
+  name description maintainers versions type repository downloads favers)
+
+(cl-defstruct emacsagist/packagist-package-version
+  name description homepage version license authors type require suggest)
+
+(defun emacsagist/parse-package-versions (data)
+  "Parse the DATA into a list of structs."
+  (loop for version in data
+        collect
+        (make-emacsagist/packagist-package-version
+         :name (cdr (assoc 'name (cdr version)))
+         :description (cdr (assoc 'description (cdr version)))
+         :homepage (cdr (assoc 'homepage (cdr version)))
+         :version (cdr (assoc 'version (cdr version)))
+         :license (cdr (assoc 'license (cdr version)))
+         :authors (cdr (assoc 'authors (cdr version)))
+         :type (cdr (assoc 'type (cdr version)))
+         :require (cdr (assoc 'require (cdr version)))
+         :suggest (cdr (assoc 'suggest (cdr version))))))
+
+(defun emacsagist/parse-package (json)
+  "Parse JSON data into a struct."
+  (let ((parsed-data (cdr (assoc 'package (json-read-from-string json)))))
+    (make-emacsagist/packagist-package
+     :name (cdr (assoc 'name parsed-data))
+     :description (cdr (assoc 'description parsed-data))
+     :maintainers (cdr (assoc 'maintainers parsed-data))
+     :versions (emacsagist/parse-package-versions
+                (cdr (assoc 'versions parsed-data)))
+     :type (cdr (assoc 'type parsed-data))
+     :repository (cdr (assoc 'repository parsed-data))
+     :downloads (cdr (assoc 'downloads parsed-data))
+     :favers (cdr (assoc 'faves parsed-data)))))
+
+(defun emacsagist/make-package-url (package)
+  "Generate a url for the PACKAGE."
+  (concat emacsagist/packagist-url "/packages/" 
+          (emacsagist/packagist-package-name package)
+          ".json"))
+
+(defun emacsagist/get-packagist-package (package)
+  "Get the PACKAGE information from Packagist."
+  (save-current-buffer
+    (let ((http-buffer (url-retrieve-synchronously
+                        (emacsagist/make-package-url package))))
+      (switch-to-buffer http-buffer)
+      (let ((result (buffer-substring url-http-end-of-headers (point-max))))
+        (kill-buffer http-buffer)
+        result))))
+
+(defun emacsagist/display-package (package-name)
+  (let ((package (emacsagist/parse-package
+                  (emacsagist/get-packagist-package
+                   (make-emacsagist/packagist-package :name package-name)))))
+    (switch-to-buffer emacsagist/packagist-results-buffer)
+    (read-only-mode -1)
+    (kill-region (point-min) (point-max))
+    (insert (emacsagist/packagist-package-name package))
+    (read-only-mode 1)
+    (goto-char (point-min))
+    (emacsagist-mode)))
+
 (defun emacsagist/make-search-url (search)
   "Generate a url for the SEARCH query."
   (let ((page (emacsagist/packagist-search-page search)))
@@ -37,15 +100,20 @@
         (kill-buffer http-buffer)
         result))))
 
-(defun emacsagist/parse-results (search results)
+(defun emacsagist/parse-search (search results)
   "Parse the SEARCH struct's RESULTS."
   (let ((parsed-results (json-read-from-string results)))
     (setf (emacsagist/packagist-search-results search)
-          (cdr (assoc 'results parsed-results)))
+          (loop for result across (cdr (assoc 'results parsed-results))
+                collect (make-emacsagist/search-result
+                         :name (cdr (assoc 'name result))
+                         :description (cdr (assoc 'description result))
+                         :url (cdr (assoc 'url result)))))
     (setf (emacsagist/packagist-search-next-page search)
-          (let ((next-url (when (assoc 'next parsed-results)
-                            (cdr (assoc 'next parsed-results)))))
-            (when next-url (nth 1 (split-string next-url "page=")))))
+          (when (assoc 'next parsed-results)
+            (string-to-number
+             (nth 1 (split-string (cdr (assoc 'next parsed-results))
+                                  "page=")))))
     search))
 
 (defun emacsagist/add-page-link (start end target-page query)
@@ -115,13 +183,13 @@
 
 (defun emacsagist/display-result (result)
   "Display the RESULT entry in the search results list."
-  (insert (cdr (assoc 'name result)))
+  (insert (emacsagist/search-result-name result))
   (newline)
-  (let ((desc (cdr (assoc 'description result))))
+  (let ((desc (emacsagist/search-result-description result)))
     (unless (string= desc "")
       (insert desc)
       (newline)))
-  (let ((url (cdr (assoc 'url result)))
+  (let ((url (emacsagist/search-result-url result))
         (start (point))
         (map (make-sparse-keymap)))
     (insert url)
@@ -137,13 +205,12 @@
   (switch-to-buffer emacsagist/packagist-results-buffer)
   (read-only-mode -1)
   (kill-region (point-min) (point-max))
-  (let ((matches (emacsagist/packagist-search-results search))
-        (next-page (emacsagist/packagist-search-next-page search)))
+  (let ((matches (emacsagist/packagist-search-results search)))
     (emacsagist/display-header search)
     (if (= 0 (length matches))
         (insert "No packages found.")
-      (dotimes (index (length matches))
-        (emacsagist/display-result (elt matches index))))
+      (dolist (result matches)
+        (emacsagist/display-result result)))
     (emacsagist/display-header search))
   (read-only-mode 1)
   (goto-char (point-min))
@@ -161,7 +228,8 @@
   (let* ((page (if (stringp page) (string-to-number page) (or page 1)))
          (search (make-emacsagist/packagist-search :query query :page page)))
     (emacsagist/display-results
-     (emacsagist/parse-results search (emacsagist/search-packagist search)))))
+     (emacsagist/parse-search search (emacsagist/search-packagist search)))))
+
 
 (define-derived-mode emacsagist-mode special-mode "Emacsagist"
   "Major mode for the emacsagist results buffer.
