@@ -53,7 +53,7 @@
      :type (cdr (assoc 'type parsed-data))
      :repository (cdr (assoc 'repository parsed-data))
      :downloads (cdr (assoc 'downloads parsed-data))
-     :favers (cdr (assoc 'faves parsed-data)))))
+     :favers (cdr (assoc 'favers parsed-data)))))
 
 (defun emacsagist/make-package-url (package)
   "Generate a url for the PACKAGE."
@@ -71,17 +71,42 @@
         (kill-buffer http-buffer)
         result))))
 
-(defun emacsagist/display-package (package-name)
-  (let ((package (emacsagist/parse-package
-                  (emacsagist/get-packagist-package
-                   (make-emacsagist/packagist-package :name package-name)))))
+(defun emacsagist/display-package (package-name query page)
+  (let* ((package (emacsagist/parse-package
+                   (emacsagist/get-packagist-package
+                    (make-emacsagist/packagist-package :name package-name))))
+         (total-downloads
+          (cdr (assoc 'total (emacsagist/packagist-package-downloads package)))))
     (switch-to-buffer emacsagist/packagist-results-buffer)
     (read-only-mode -1)
     (kill-region (point-min) (point-max))
-    (insert (emacsagist/packagist-package-name package))
+    (let ((map (make-sparse-keymap))
+          (start (point)))
+      (insert "[Back]")
+      (define-key map (kbd "RET") 'emacsagist/back-to-search)
+      (add-text-properties start (point) `(keymap ,map
+                                           face underline
+                                           page ,page
+                                           query ,query)))
+    (insert " ")
+    (newline 2)
+    (insert
+     (concat (emacsagist/packagist-package-name package) " ("
+             (number-to-string total-downloads)
+             " download" (when (> total-downloads 1) "s") ", "
+             (number-to-string (emacsagist/packagist-package-favers package))
+             " favorite"
+             (when (> (emacsagist/packagist-package-favers package) 1) "s")
+             ")"))
     (read-only-mode 1)
     (goto-char (point-min))
     (emacsagist-mode)))
+
+(defun emacsagist/back-to-search ()
+  "Return the user to the previous search page."
+  (interactive)
+  (emacsagist/search (get-text-property (point) 'query)
+                     (get-text-property (point) 'page)))
 
 (defun emacsagist/make-search-url (search)
   "Generate a url for the SEARCH query."
@@ -183,9 +208,28 @@
                 (previous-single-property-change previous-position 'keymap))))))
     (when previous-position (goto-char previous-position))))
 
-(defun emacsagist/display-result (result)
-  "Display the RESULT entry in the search results list."
-  (insert (concat (emacsagist/search-result-name result) " ("
+(defun emacsagist/goto-package ()
+  "Shows the package information."
+  (interactive)
+  (emacsagist/display-package (get-text-property (point) 'name)
+                              (get-text-property (point) 'query)
+                              (get-text-property (point) 'page)))
+
+(defun emacsagist/display-result (result search)
+  "Display the RESULT entry in the SEARCH results list."
+  (let ((start (point))
+        (map (make-sparse-keymap))
+        (name (emacsagist/search-result-name result))
+        (query (emacsagist/packagist-search-query search))
+        (page (emacsagist/packagist-search-page search)))
+    (insert name)
+    (define-key map (kbd "RET") 'emacsagist/goto-package)
+    (add-text-properties start (point) `(keymap ,map
+                                         face underline
+                                         name ,name
+                                         query ,query
+                                         page ,page))) 
+  (insert (concat  " ("
                   (number-to-string (emacsagist/search-result-downloads result))
                   " download"
                   (when (> (emacsagist/search-result-downloads result) 1) "s")
@@ -220,7 +264,7 @@
     (if (= 0 (length matches))
         (insert "No packages found.")
       (dolist (result matches)
-        (emacsagist/display-result result)))
+        (emacsagist/display-result result search)))
     (emacsagist/display-header search))
   (read-only-mode 1)
   (goto-char (point-min))
