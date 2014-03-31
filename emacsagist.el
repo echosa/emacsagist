@@ -11,6 +11,7 @@
 ;; TAB/BACKTAB, n/p, and j/k all jump between links.
 
 (require 'cl-lib)
+(require 'cl)
 (require 'json)
 (require 'url)
 
