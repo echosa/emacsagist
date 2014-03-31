@@ -3,7 +3,12 @@
 ;; Version: 0.1.0
 
 ;;; Commentary:
+;; This is a package for searching Packagist.org, a PHP library repository, from
+;; within emacs.
 ;; 
+;; To run a search, simply exectute M-x emacsagist/search
+;;
+;; TAB/BACKTAB, n/p, and j/k all jump between links.
 
 (require 'cl-lib)
 (require 'json)
@@ -369,6 +374,12 @@
 
 (define-key emacsagist-mode-map (kbd "TAB") 'emacsagist/next-link)
 (define-key emacsagist-mode-map [backtab] 'emacsagist/previous-link)
+(define-key emacsagist-mode-map "n" 'emacsagist/next-link)
+(define-key emacsagist-mode-map "p" 'emacsagist/previous-link)
+(define-key emacsagist-mode-map "j" 'emacsagist/next-link)
+(define-key emacsagist-mode-map "k" 'emacsagist/previous-link)
+
+
 
 (provide 'emacsagist)
 
