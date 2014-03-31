@@ -73,9 +73,51 @@
 
 (defun emacsagist/display-package-version (version)
   "Display single package VERSION."
-  ;; versions - name description homepage version license authors type require suggest 
   (insert (emacsagist/packagist-package-version-version version))
-  (newline))
+  (newline)
+  (insert (concat "\t" (emacsagist/packagist-package-version-name version)))
+  (newline)
+  (insert (concat "\t" (emacsagist/packagist-package-version-description version)))
+  (newline)
+  (insert "\t")
+  (let ((url (emacsagist/packagist-package-version-homepage version))
+        (start (point))
+        (map (make-sparse-keymap)))
+    (insert url)
+    (define-key map (kbd "RET") 'emacsagist/goto-url-property)
+    (add-text-properties start (point) `(keymap ,map
+                                         face underline
+                                         url ,url)))
+  (insert " ")
+  (newline 2)
+  (insert "\tLicense: ")
+  (loop for license across
+        (emacsagist/packagist-package-version-license version)
+        do (insert (concat license " ")))
+  (newline)
+  (insert "\tAuthors:")
+  (newline)
+  (loop for author across (emacsagist/packagist-package-version-authors version)
+        do
+        (insert (concat "\t\t" (cdr (assoc 'name author))
+                        " <" (cdr (assoc 'email author)) ">\n")))
+  (newline)
+  (insert "\tRequire:")
+  (newline)
+  (loop for require in (reverse
+                        (emacsagist/packagist-package-version-require version))
+        do
+        (insert (concat "\t\t" (symbol-name (car require)) ": " (cdr require)
+                        "\n")))
+  (newline)
+  (insert "\tSuggest:")
+  (newline)
+  (loop for suggest in (reverse
+                        (emacsagist/packagist-package-version-suggest version))
+        do
+        (insert (concat "\t\t" (symbol-name (car suggest)) ": " (cdr suggest)
+                        "\n")))
+  (newline 2))
 
 (defun emacsagist/display-package (package-name query page)
   "Display package information for PACKAGE-NAME, with a link to QUERY PAGE."
@@ -88,6 +130,13 @@
     (switch-to-buffer emacsagist/packagist-results-buffer)
     (read-only-mode -1)
     (kill-region (point-min) (point-max))
+    (insert
+     (concat (emacsagist/packagist-package-name package) " ("
+             (number-to-string total-downloads)
+             " download" (when (> total-downloads 1) "s") ", "
+             (number-to-string favorites)
+             " favorite" (when (> favorites 1) "s") ")"))
+    (newline 2)
     (let ((map (make-sparse-keymap))
           (start (point)))
       (insert "[Back]")
@@ -98,13 +147,6 @@
                                            query ,query)))
     (insert " ")
     (newline 2)
-    (insert
-     (concat (emacsagist/packagist-package-name package) " ("
-             (number-to-string total-downloads)
-             " download" (when (> total-downloads 1) "s") ", "
-             (number-to-string favorites)
-             " favorite" (when (> favorites 1) "s") ")"))
-    (newline)
     (insert (emacsagist/packagist-package-description package))
     (newline 2)
     (insert (concat "Type: " (emacsagist/packagist-package-type package)))
@@ -114,15 +156,25 @@
     (newline 2)
     (insert "Maintainers: ")
     (newline)
-    (loop for maintainer across (emacsagist/packagist-package-maintainers package)
+    (loop for maintainer across 
+          (emacsagist/packagist-package-maintainers package)
           do
-          (insert "\t" (concat (cdr (assoc 'name maintainer))
-                               " <" (cdr (assoc 'email maintainer)) ">")))
-    (newline 2)
+          (insert (concat "\t" (cdr (assoc 'name maintainer))
+                          " <" (cdr (assoc 'email maintainer)) ">\n")))
+    (newline)
     (insert "Versions:")
     (newline 2)
     (loop for version in (emacsagist/packagist-package-versions package)
           do (emacsagist/display-package-version version))
+    (let ((map (make-sparse-keymap))
+          (start (point)))
+      (insert "[Back]")
+      (define-key map (kbd "RET") 'emacsagist/back-to-search)
+      (add-text-properties start (point) `(keymap ,map
+                                           face underline
+                                           page ,page
+                                           query ,query)))
+    (insert " ")
     (read-only-mode 1)
     (goto-char (point-min))
     (emacsagist-mode)))
