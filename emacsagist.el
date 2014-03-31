@@ -28,7 +28,7 @@
 
 (defun emacsagist/parse-package-versions (data)
   "Parse the DATA into a list of structs."
-  (loop for version in data
+  (loop for version in (reverse data)
         collect
         (make-emacsagist/packagist-package-version
          :name (cdr (assoc 'name (cdr version)))
@@ -71,12 +71,20 @@
         (kill-buffer http-buffer)
         result))))
 
+(defun emacsagist/display-package-version (version)
+  "Display single package VERSION."
+  ;; versions - name description homepage version license authors type require suggest 
+  (insert (emacsagist/packagist-package-version-version version))
+  (newline))
+
 (defun emacsagist/display-package (package-name query page)
+  "Display package information for PACKAGE-NAME, with a link to QUERY PAGE."
   (let* ((package (emacsagist/parse-package
                    (emacsagist/get-packagist-package
                     (make-emacsagist/packagist-package :name package-name))))
          (total-downloads
-          (cdr (assoc 'total (emacsagist/packagist-package-downloads package)))))
+          (cdr (assoc 'total (emacsagist/packagist-package-downloads package))))
+         (favorites (emacsagist/packagist-package-favers package)))
     (switch-to-buffer emacsagist/packagist-results-buffer)
     (read-only-mode -1)
     (kill-region (point-min) (point-max))
@@ -94,10 +102,27 @@
      (concat (emacsagist/packagist-package-name package) " ("
              (number-to-string total-downloads)
              " download" (when (> total-downloads 1) "s") ", "
-             (number-to-string (emacsagist/packagist-package-favers package))
-             " favorite"
-             (when (> (emacsagist/packagist-package-favers package) 1) "s")
-             ")"))
+             (number-to-string favorites)
+             " favorite" (when (> favorites 1) "s") ")"))
+    (newline)
+    (insert (emacsagist/packagist-package-description package))
+    (newline 2)
+    (insert (concat "Type: " (emacsagist/packagist-package-type package)))
+    (newline)
+    (insert (concat "Repository: "
+                    (emacsagist/packagist-package-repository package)))
+    (newline 2)
+    (insert "Maintainers: ")
+    (newline)
+    (loop for maintainer across (emacsagist/packagist-package-maintainers package)
+          do
+          (insert "\t" (concat (cdr (assoc 'name maintainer))
+                               " <" (cdr (assoc 'email maintainer)) ">")))
+    (newline 2)
+    (insert "Versions:")
+    (newline 2)
+    (loop for version in (emacsagist/packagist-package-versions package)
+          do (emacsagist/display-package-version version))
     (read-only-mode 1)
     (goto-char (point-min))
     (emacsagist-mode)))
