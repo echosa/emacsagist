@@ -18,7 +18,7 @@
   query page results next-page)
 
 (cl-defstruct emacsagist/search-result
-  name description url)
+  name description url downloads favers)
 
 (cl-defstruct emacsagist/packagist-package
   name description maintainers versions type repository downloads favers)
@@ -108,7 +108,9 @@
                 collect (make-emacsagist/search-result
                          :name (cdr (assoc 'name result))
                          :description (cdr (assoc 'description result))
-                         :url (cdr (assoc 'url result)))))
+                         :url (cdr (assoc 'url result))
+                         :downloads (cdr (assoc 'downloads result))
+                         :favers (cdr (assoc 'favers result)))))
     (setf (emacsagist/packagist-search-next-page search)
           (when (assoc 'next parsed-results)
             (string-to-number
@@ -119,11 +121,11 @@
 (defun emacsagist/add-page-link (start end target-page query)
   "Add link between START and END to view TARGET-PAGE of QUERY search results."
   (let ((map (make-sparse-keymap)))
-      (define-key map (kbd "RET") 'emacsagist/display-page)
-      (add-text-properties start end `(keymap ,map
-                                       face underline
-                                       page ,target-page
-                                       query ,query))))
+    (define-key map (kbd "RET") 'emacsagist/display-page)
+    (add-text-properties start end `(keymap ,map
+                                            face underline
+                                            page ,target-page
+                                            query ,query))))
 
 (defun emacsagist/display-page-links (search)
   "Display previous/next page links for SEARCH results."
@@ -183,7 +185,15 @@
 
 (defun emacsagist/display-result (result)
   "Display the RESULT entry in the search results list."
-  (insert (emacsagist/search-result-name result))
+  (insert (concat (emacsagist/search-result-name result) " ("
+                  (number-to-string (emacsagist/search-result-downloads result))
+                  " download"
+                  (when (> (emacsagist/search-result-downloads result) 1) "s")
+                  ", "
+                  (number-to-string (emacsagist/search-result-favers result))
+                  " favorite"
+                  (when (> (emacsagist/search-result-favers result) 1) "s")
+                  ")"))
   (newline)
   (let ((desc (emacsagist/search-result-description result)))
     (unless (string= desc "")
