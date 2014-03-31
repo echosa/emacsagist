@@ -1,6 +1,6 @@
 ;;; emacsagist.el --- Search Packagist.org packages without leaving Emacs -*- lexical-binding: t; -*-
 
-;; Version: 0.1.0
+;; Version: 1.0.0
 
 ;;; Commentary:
 ;; This is a package for searching Packagist.org, a PHP library repository, from
