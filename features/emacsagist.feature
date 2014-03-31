@@ -53,4 +53,13 @@ Feature: Search Packagist
     When I press "<backtab>"
     Then the cursor should be before "[Next Page]"
 
-
+  Scenario: Viewing a Package
+    When I run a search
+    And I place the cursor between "phpunit/" and "phpunit"
+    And I press "<RET>"
+    Then I should see "[Back]"
+    And I should see "Type: library"
+    When I press "<tab>"
+    And I press "<RET>"
+    Then I should not see "[Back]"
+    And I should see "[Next Page]"

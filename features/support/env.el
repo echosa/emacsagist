@@ -23,6 +23,12 @@
              ".json"))
     (buffer-string)))
 
+(defun emacsagist/get-packagist-package (package)
+  (with-temp-buffer
+    (insert-file-contents
+     (concat emacsagist-root-path "/test-data/phpunit.json"))
+    (buffer-string)))
+
 (Setup
  ;; Before anything has run
  )
