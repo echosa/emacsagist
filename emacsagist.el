@@ -57,7 +57,7 @@
 
 (defun emacsagist/make-package-url (package)
   "Generate a url for the PACKAGE."
-  (concat emacsagist/packagist-url "/packages/" 
+  (concat emacsagist/packagist-url "/packages/"
           (emacsagist/packagist-package-name package)
           ".json"))
 
@@ -156,7 +156,7 @@
     (newline 2)
     (insert "Maintainers: ")
     (newline)
-    (loop for maintainer across 
+    (loop for maintainer across
           (emacsagist/packagist-package-maintainers package)
           do
           (insert (concat "\t" (cdr (assoc 'name maintainer))
@@ -286,7 +286,7 @@
     (when previous-position (goto-char previous-position))))
 
 (defun emacsagist/goto-package ()
-  "Shows the package information."
+  "Show the package information."
   (interactive)
   (emacsagist/display-package (get-text-property (point) 'name)
                               (get-text-property (point) 'query)
@@ -305,7 +305,7 @@
                                          face underline
                                          name ,name
                                          query ,query
-                                         page ,page))) 
+                                         page ,page)))
   (insert (concat  " ("
                   (number-to-string (emacsagist/search-result-downloads result))
                   " download"
